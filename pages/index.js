@@ -46,10 +46,18 @@ export default function Home() {
       .insert([{ content: newTodo.trim(), done: false }])
       .select();
 
-    if (error) console.error('Insert error', error);
-    else setTodos((t) => [data[0], ...t]);
+    if (error) {
+      console.error('Insert error', error);
+      alert('Failed to add todo: ' + (error.message || 'Unknown error'));
+    } else if (data && data.length > 0) {
+      setTodos((t) => [data[0], ...t]);
+      setNewTodo('');
+    } else {
+      console.warn('No data returned from insert');
+      // Refresh the list from server
+      fetchTodos();
+    }
 
-    setNewTodo('');
     setLoading(false);
   }
 
