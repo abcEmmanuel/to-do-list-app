@@ -12,21 +12,32 @@ export default function Home() {
 
   async function fetchTodos() {
     setLoading(true);
-    const supabase = getSupabase();
-    if (!supabase) {
-      console.error('Supabase not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY env vars.');
-      setLoading(false);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('todos')
-      .select('*')
-      .order('id', { ascending: false });
+    try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        console.error('❌ Supabase not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY env vars.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('📖 Fetching todos...');
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .order('id', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching todos', error);
-    } else {
-      setTodos(data || []);
+      if (error) {
+        console.error('❌ Error fetching todos:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+        });
+      } else {
+        console.log('✅ Todos fetched successfully:', data?.length || 0, 'items');
+        setTodos(data || []);
+      }
+    } catch (err) {
+      console.error('❌ Unexpected error fetching todos:', err);
     }
     setLoading(false);
   }
@@ -35,27 +46,46 @@ export default function Home() {
     e.preventDefault();
     if (!newTodo.trim()) return;
     setLoading(true);
-    const supabase = getSupabase();
-    if (!supabase) {
-      console.error('Supabase not configured');
-      setLoading(false);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('todos')
-      .insert([{ content: newTodo.trim(), done: false }])
-      .select();
+    
+    try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        console.error('❌ Supabase not configured. Check env vars: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
+        alert('Supabase not configured. Check your environment variables.');
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      console.error('Insert error', error);
-      alert('Failed to add todo: ' + (error.message || 'Unknown error'));
-    } else if (data && data.length > 0) {
-      setTodos((t) => [data[0], ...t]);
-      setNewTodo('');
-    } else {
-      console.warn('No data returned from insert');
-      // Refresh the list from server
-      fetchTodos();
+      console.log('📝 Attempting to insert todo:', newTodo);
+      const { data, error } = await supabase
+        .from('todos')
+        .insert([{ content: newTodo.trim(), done: false }])
+        .select();
+
+      if (error) {
+        console.error('❌ Insert error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+        
+        let errorMsg = error.message || 'Unknown error';
+        if (error.code === 'PGRST116') {
+          errorMsg = 'Row Level Security (RLS) is preventing inserts. Check Supabase policies.';
+        }
+        alert('Failed to add todo:\n' + errorMsg);
+      } else if (data && data.length > 0) {
+        console.log('✅ Todo added successfully:', data[0]);
+        setTodos((t) => [data[0], ...t]);
+        setNewTodo('');
+      } else {
+        console.warn('⚠️ No data returned from insert. Refreshing list...');
+        await fetchTodos();
+      }
+    } catch (err) {
+      console.error('❌ Unexpected error:', err);
+      alert('An unexpected error occurred: ' + err.message);
     }
 
     setLoading(false);
