@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import supabase from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 export default function Home() {
   const [todos, setTodos] = useState([]);
@@ -12,6 +12,12 @@ export default function Home() {
 
   async function fetchTodos() {
     setLoading(true);
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.error('Supabase not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY env vars.');
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('todos')
       .select('*')
@@ -29,6 +35,12 @@ export default function Home() {
     e.preventDefault();
     if (!newTodo.trim()) return;
     setLoading(true);
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.error('Supabase not configured');
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('todos')
       .insert([{ content: newTodo.trim(), done: false }])
@@ -42,6 +54,11 @@ export default function Home() {
   }
 
   async function toggleDone(todo) {
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.error('Supabase not configured');
+      return;
+    }
     const { data, error } = await supabase
       .from('todos')
       .update({ done: !todo.done })
@@ -53,6 +70,11 @@ export default function Home() {
   }
 
   async function deleteTodo(id) {
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.error('Supabase not configured');
+      return;
+    }
     const { error } = await supabase.from('todos').delete().eq('id', id);
     if (error) console.error('Delete error', error);
     else setTodos((t) => t.filter((x) => x.id !== id));
